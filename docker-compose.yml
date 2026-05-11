@@ -29,23 +29,18 @@ services:
     image: registry.gitlab.com/crafty-controller/crafty-4:latest
     container_name: crafty
     restart: unless-stopped
+
     environment:
       - TZ=${TZ}
+
     volumes:
       - ./crafty-data/backups:/crafty/backups
       - ./crafty-data/logs:/crafty/logs
       - ./crafty-data/servers:/crafty/servers
       - ./crafty-data/config:/crafty/app/config
       - ./crafty-data/import:/crafty/import
-    networks:
-      - proxy
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.crafty.rule=Host(`${CRAFTY_SUBDOMAIN}`)"
-      - "traefik.http.routers.crafty.entrypoints=websecure"
-      - "traefik.http.routers.crafty.tls.certresolver=letsencrypt"
-      - "traefik.http.services.crafty.loadbalancer.server.port=8443"
-      - "traefik.http.services.crafty.loadbalancer.server.scheme=https"
+    ports:
+      - "8443:8443"
 
   minecraft:
     image: itzg/minecraft-server
@@ -66,6 +61,7 @@ services:
       MOTD: ${MC_MOTD}
       OPS: ${MC_OPS}
       LEVEL: ${MC_LEVEL}
+      ONLINE_MODE: "FALSE"
     volumes:
       - ./mc-data:/data
     networks:
