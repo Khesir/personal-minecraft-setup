@@ -1,0 +1,76 @@
+services:
+  traefik:
+    image: traefik:v3.0
+    container_name: traefik
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "25565:25565"
+    command:
+      - "--api.insecure=false"
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.web.http.redirections.entrypoint.to=websecure"
+      - "--entrypoints.web.http.redirections.entrypoint.scheme=https"
+      - "--entrypoints.websecure.address=:443"
+      - "--entrypoints.minecraft.address=:25565"
+      - "--certificatesresolvers.letsencrypt.acme.tlschallenge=true"
+      - "--certificatesresolvers.letsencrypt.acme.email=${ACME_EMAIL}"
+      - "--certificatesresolvers.letsencrypt.acme.storage=/letsencrypt/acme.json"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./letsencrypt:/letsencrypt
+    networks:
+      - proxy
+
+  crafty:
+    image: registry.gitlab.com/crafty-controller/crafty-4:latest
+    container_name: crafty
+    restart: unless-stopped
+    environment:
+      - TZ=${TZ}
+    volumes:
+      - ./crafty-data/backups:/crafty/backups
+      - ./crafty-data/logs:/crafty/logs
+      - ./crafty-data/servers:/crafty/servers
+      - ./crafty-data/config:/crafty/app/config
+      - ./crafty-data/import:/crafty/import
+    networks:
+      - proxy
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.crafty.rule=Host(`${CRAFTY_SUBDOMAIN}`)"
+      - "traefik.http.routers.crafty.entrypoints=websecure"
+      - "traefik.http.routers.crafty.tls.certresolver=letsencrypt"
+      - "traefik.http.services.crafty.loadbalancer.server.port=8443"
+      - "traefik.http.services.crafty.loadbalancer.server.scheme=https"
+
+  minecraft:
+    image: itzg/minecraft-server
+    container_name: minecraft
+    restart: unless-stopped
+    tty: true
+    stdin_open: true
+    ports:
+      - "25565:25565"
+    environment:
+      EULA: "TRUE"
+      TYPE: ${MC_TYPE}
+      VERSION: ${MC_VERSION}
+      MEMORY: ${MC_MEMORY}
+      DIFFICULTY: ${MC_DIFFICULTY}
+      MAX_PLAYERS: ${MC_MAX_PLAYERS}
+      VIEW_DISTANCE: ${MC_VIEW_DISTANCE}
+      MOTD: ${MC_MOTD}
+      OPS: ${MC_OPS}
+      LEVEL: ${MC_LEVEL}
+    volumes:
+      - ./mc-data:/data
+    networks:
+      - proxy
+
+networks:
+  proxy:
+    external: false
