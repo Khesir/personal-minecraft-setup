@@ -53,8 +53,6 @@ services:
     restart: unless-stopped
     tty: true
     stdin_open: true
-    ports:
-      - "25565:25565"
     environment:
       EULA: "TRUE"
       TYPE: ${MC_TYPE}
